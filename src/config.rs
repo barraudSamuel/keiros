@@ -102,7 +102,8 @@ pub fn canonicalize_existing_dir(path: &Path) -> Result<PathBuf> {
         bail!("{} is not a directory", path.display());
     }
 
-    std::fs::canonicalize(path).with_context(|| format!("failed to canonicalize {}", path.display()))
+    std::fs::canonicalize(path)
+        .with_context(|| format!("failed to canonicalize {}", path.display()))
 }
 
 pub fn resolve_input_path(root: &Path, input: &Path) -> Result<PathBuf> {
@@ -154,7 +155,10 @@ pub fn normalize_relative_path(root: &Path, path: &Path) -> Result<String> {
     }
 
     if pieces.is_empty() {
-        bail!("path {} does not refer to a file inside the project", path.display());
+        bail!(
+            "path {} does not refer to a file inside the project",
+            path.display()
+        );
     }
 
     Ok(pieces.join("/"))
@@ -181,5 +185,6 @@ pub fn timeline_storage_size(path: &Path) -> Result<u64> {
 }
 
 fn contains_parent_dir(path: &Path) -> bool {
-    path.components().any(|component| matches!(component, Component::ParentDir))
+    path.components()
+        .any(|component| matches!(component, Component::ParentDir))
 }

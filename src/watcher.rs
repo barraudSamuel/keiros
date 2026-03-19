@@ -15,6 +15,7 @@ use crate::{
     snapshot::{capture_initial_state, process_path_change},
     store::TimelineStore,
     time::now_ms,
+    ui::{BadgeTone, Ui},
 };
 
 pub fn watch(root: PathBuf, config: TimelineConfig) -> Result<()> {
@@ -25,12 +26,22 @@ pub fn watch(root: PathBuf, config: TimelineConfig) -> Result<()> {
     let started_at_ms = now_ms();
     let pid = process::id() as i64;
     store.touch_watcher(pid, started_at_ms, started_at_ms, &paths.root)?;
+    let stdout_ui = Ui::stdout();
+    let stderr_ui = Ui::stderr();
 
     let scan = capture_initial_state(&paths.root, &filter, &mut store, started_at_ms)?;
-    println!("Watching {}", paths.root.display());
     println!(
-        "Initial scan captured {} changed files and {} deletions",
-        scan.tracked_files, scan.deleted_files
+        "{}",
+        stdout_ui.title("Watching", paths.root.display().to_string())
+    );
+    println!(
+        "{}",
+        stdout_ui.key_values(&[
+            ("Watcher", stdout_ui.badge("RUNNING", BadgeTone::Success)),
+            ("Pid", pid.to_string()),
+            ("Initial changes", scan.tracked_files.to_string()),
+            ("Initial deletions", scan.deleted_files.to_string()),
+        ])
     );
 
     let (sender, receiver) = mpsc::channel();
@@ -57,7 +68,7 @@ pub fn watch(root: PathBuf, config: TimelineConfig) -> Result<()> {
                 }
             }
             Ok(Err(error)) => {
-                eprintln!("watch error: {error}");
+                eprintln!("{}", stderr_ui.error(format!("watch error: {error}")));
             }
             Err(mpsc::RecvTimeoutError::Timeout) => {}
             Err(mpsc::RecvTimeoutError::Disconnected) => break,

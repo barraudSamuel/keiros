@@ -41,7 +41,10 @@ pub fn restore_file(
         Some(content) => {
             if let Some(parent) = absolute_path.parent() {
                 std::fs::create_dir_all(parent).with_context(|| {
-                    format!("failed to create parent directories for {}", absolute_path.display())
+                    format!(
+                        "failed to create parent directories for {}",
+                        absolute_path.display()
+                    )
                 })?;
             }
             std::fs::write(&absolute_path, content)
@@ -64,7 +67,11 @@ pub fn restore_file(
     }
 }
 
-pub fn restore_project(root: &Path, store: &TimelineStore, at_ms: i64) -> Result<ProjectRestoreSummary> {
+pub fn restore_project(
+    root: &Path,
+    store: &TimelineStore,
+    at_ms: i64,
+) -> Result<ProjectRestoreSummary> {
     let mut summary = ProjectRestoreSummary::default();
 
     for relative_path in store.list_all_paths()? {
@@ -73,7 +80,10 @@ pub fn restore_project(root: &Path, store: &TimelineStore, at_ms: i64) -> Result
             Some(content) => {
                 if let Some(parent) = absolute_path.parent() {
                     std::fs::create_dir_all(parent).with_context(|| {
-                        format!("failed to create parent directories for {}", absolute_path.display())
+                        format!(
+                            "failed to create parent directories for {}",
+                            absolute_path.display()
+                        )
                     })?;
                 }
                 std::fs::write(&absolute_path, content)

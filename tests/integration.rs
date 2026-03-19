@@ -22,10 +22,14 @@ fn debounce_waits_for_stable_idle_window() {
     let mut debouncer = Debouncer::new(Duration::from_millis(1_000));
 
     debouncer.record(path.clone(), base);
-    assert!(debouncer.drain_ready(base + Duration::from_millis(500)).is_empty());
+    assert!(debouncer
+        .drain_ready(base + Duration::from_millis(500))
+        .is_empty());
 
     debouncer.record(path.clone(), base + Duration::from_millis(700));
-    assert!(debouncer.drain_ready(base + Duration::from_millis(1_500)).is_empty());
+    assert!(debouncer
+        .drain_ready(base + Duration::from_millis(1_500))
+        .is_empty());
 
     let ready = debouncer.drain_ready(base + Duration::from_millis(1_701));
     assert_eq!(ready, vec![path]);
@@ -38,17 +42,24 @@ fn ignore_filter_uses_gitignore_and_builtin_rules() -> Result<()> {
     write_text(&temp.path().join("src/lib.rs"), "fn main() {}\n")?;
     write_text(&temp.path().join("ignored.rs"), "ignored\n")?;
     write_text(&temp.path().join(".env"), "SECRET=1\n")?;
-    write_text(&temp.path().join("node_modules/pkg/index.js"), "module.exports = {}\n")?;
+    write_text(
+        &temp.path().join("node_modules/pkg/index.js"),
+        "module.exports = {}\n",
+    )?;
 
     let filter = ProjectFilter::new(temp.path().to_path_buf(), DEFAULT_MAX_FILE_SIZE_BYTES)?;
-    assert!(filter.read_trackable_text(&temp.path().join("src/lib.rs"))?.is_some());
-    assert!(filter.read_trackable_text(&temp.path().join("ignored.rs"))?.is_none());
-    assert!(filter.read_trackable_text(&temp.path().join(".env"))?.is_none());
-    assert!(
-        filter
-            .read_trackable_text(&temp.path().join("node_modules/pkg/index.js"))?
-            .is_none()
-    );
+    assert!(filter
+        .read_trackable_text(&temp.path().join("src/lib.rs"))?
+        .is_some());
+    assert!(filter
+        .read_trackable_text(&temp.path().join("ignored.rs"))?
+        .is_none());
+    assert!(filter
+        .read_trackable_text(&temp.path().join(".env"))?
+        .is_none());
+    assert!(filter
+        .read_trackable_text(&temp.path().join("node_modules/pkg/index.js"))?
+        .is_none());
     Ok(())
 }
 
@@ -112,7 +123,10 @@ fn delete_revisions_make_the_file_absent_after_the_delete_timestamp() -> Result<
     store.record_text("src/lib.rs", "v1\n", 1_000)?;
     store.record_delete("src/lib.rs", 2_000)?;
 
-    assert_eq!(store.file_state_at("src/lib.rs", 1_500)?, Some("v1\n".to_string()));
+    assert_eq!(
+        store.file_state_at("src/lib.rs", 1_500)?,
+        Some("v1\n".to_string())
+    );
     assert_eq!(store.file_state_at("src/lib.rs", 2_500)?, None);
     Ok(())
 }
@@ -128,8 +142,14 @@ fn pruning_keeps_a_boundary_anchor_and_newer_revisions() -> Result<()> {
     let summary = store.prune(10 * DAY_MS)?;
     assert_eq!(summary.removed_revisions, 1);
     assert_eq!(store.file_history("src/lib.rs")?.len(), 2);
-    assert_eq!(store.file_state_at("src/lib.rs", 4 * DAY_MS)?, Some("v1\n".to_string()));
-    assert_eq!(store.file_state_at("src/lib.rs", 8 * DAY_MS)?, Some("v2\n".to_string()));
+    assert_eq!(
+        store.file_state_at("src/lib.rs", 4 * DAY_MS)?,
+        Some("v1\n".to_string())
+    );
+    assert_eq!(
+        store.file_state_at("src/lib.rs", 8 * DAY_MS)?,
+        Some("v2\n".to_string())
+    );
     Ok(())
 }
 
@@ -142,10 +162,19 @@ fn timestamp_lookup_uses_latest_revision_at_or_before_the_target() -> Result<()>
     store.record_delete("src/lib.rs", 3_000)?;
     store.record_text("src/lib.rs", "v3\n", 4_000)?;
 
-    assert_eq!(store.file_state_at("src/lib.rs", 1_999)?, Some("v1\n".to_string()));
-    assert_eq!(store.file_state_at("src/lib.rs", 2_500)?, Some("v2\n".to_string()));
+    assert_eq!(
+        store.file_state_at("src/lib.rs", 1_999)?,
+        Some("v1\n".to_string())
+    );
+    assert_eq!(
+        store.file_state_at("src/lib.rs", 2_500)?,
+        Some("v2\n".to_string())
+    );
     assert_eq!(store.file_state_at("src/lib.rs", 3_500)?, None);
-    assert_eq!(store.file_state_at("src/lib.rs", 4_500)?, Some("v3\n".to_string()));
+    assert_eq!(
+        store.file_state_at("src/lib.rs", 4_500)?,
+        Some("v3\n".to_string())
+    );
     Ok(())
 }
 

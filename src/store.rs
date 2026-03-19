@@ -151,9 +151,17 @@ impl TimelineStore {
         Ok(store)
     }
 
-    pub fn record_text(&mut self, relative_path: &str, content: &str, recorded_at_ms: i64) -> Result<bool> {
+    pub fn record_text(
+        &mut self,
+        relative_path: &str,
+        content: &str,
+        recorded_at_ms: i64,
+    ) -> Result<bool> {
         let hash = hash_text(content);
-        let tx = self.conn.transaction().context("failed to begin sqlite transaction")?;
+        let tx = self
+            .conn
+            .transaction()
+            .context("failed to begin sqlite transaction")?;
         let file_id = upsert_file_tx(&tx, relative_path, recorded_at_ms)?;
         let latest = latest_revision_for_file_tx(&tx, file_id)?;
 
@@ -166,7 +174,10 @@ impl TimelineStore {
             }
         }
 
-        let ordinal = latest.as_ref().map(|revision| revision.ordinal + 1).unwrap_or(1);
+        let ordinal = latest
+            .as_ref()
+            .map(|revision| revision.ordinal + 1)
+            .unwrap_or(1);
         let event_type = match latest.as_ref().map(|revision| revision.event_type) {
             None | Some(EventType::Delete) => EventType::Create,
             Some(_) => EventType::Modify,
@@ -221,7 +232,10 @@ impl TimelineStore {
     }
 
     pub fn record_delete(&mut self, relative_path: &str, recorded_at_ms: i64) -> Result<bool> {
-        let tx = self.conn.transaction().context("failed to begin sqlite transaction")?;
+        let tx = self
+            .conn
+            .transaction()
+            .context("failed to begin sqlite transaction")?;
         let Some(file_id) = file_id_by_path_tx(&tx, relative_path)? else {
             tx.commit().context("failed to commit sqlite transaction")?;
             return Ok(false);
@@ -292,7 +306,12 @@ impl TimelineStore {
         let rows = statement.query_map(params![file_id], |row| {
             let event_type: String = row.get(1)?;
             let storage_kind: String = row.get(3)?;
-            Ok((row.get::<_, i64>(0)?, event_type, row.get::<_, Option<i64>>(2)?, storage_kind))
+            Ok((
+                row.get::<_, i64>(0)?,
+                event_type,
+                row.get::<_, Option<i64>>(2)?,
+                storage_kind,
+            ))
         })?;
 
         let mut history = Vec::new();
@@ -321,7 +340,10 @@ impl TimelineStore {
             return Ok(None);
         }
 
-        Ok(Some(reconstruct_revision_content_conn(&self.conn, revision.id)?))
+        Ok(Some(reconstruct_revision_content_conn(
+            &self.conn,
+            revision.id,
+        )?))
     }
 
     pub fn list_all_paths(&self) -> Result<Vec<String>> {
@@ -447,7 +469,10 @@ impl TimelineStore {
             ids
         };
 
-        let tx = self.conn.transaction().context("failed to begin sqlite transaction")?;
+        let tx = self
+            .conn
+            .transaction()
+            .context("failed to begin sqlite transaction")?;
         let mut removed_revisions = 0_usize;
         let mut removed_files = 0_usize;
         let mut kept_anchors = 0_usize;
@@ -464,7 +489,9 @@ impl TimelineStore {
                 .filter(|revision| revision.recorded_at_ms <= cutoff_ms)
                 .max_by_key(|revision| (revision.recorded_at_ms, revision.id))
                 .cloned();
-            let has_newer = revisions.iter().any(|revision| revision.recorded_at_ms > cutoff_ms);
+            let has_newer = revisions
+                .iter()
+                .any(|revision| revision.recorded_at_ms > cutoff_ms);
 
             if has_newer {
                 for revision in revisions
@@ -513,9 +540,16 @@ impl TimelineStore {
         })
     }
 
-    pub fn touch_watcher(&self, pid: i64, started_at_ms: i64, heartbeat_ms: i64, root: &Path) -> Result<()> {
-        self.conn.execute(
-            "
+    pub fn touch_watcher(
+        &self,
+        pid: i64,
+        started_at_ms: i64,
+        heartbeat_ms: i64,
+        root: &Path,
+    ) -> Result<()> {
+        self.conn
+            .execute(
+                "
             INSERT INTO watcher_state (slot, pid, root_path, started_at_ms, heartbeat_ms)
             VALUES (1, ?1, ?2, ?3, ?4)
             ON CONFLICT(slot) DO UPDATE SET
@@ -527,15 +561,16 @@ impl TimelineStore {
                     ELSE excluded.started_at_ms
                 END
             ",
-            params![pid, root.display().to_string(), started_at_ms, heartbeat_ms],
-        )
-        .context("failed to update watcher heartbeat")?;
+                params![pid, root.display().to_string(), started_at_ms, heartbeat_ms],
+            )
+            .context("failed to update watcher heartbeat")?;
         Ok(())
     }
 
     fn initialize_schema(&self) -> Result<()> {
-        self.conn.execute_batch(
-            "
+        self.conn
+            .execute_batch(
+                "
             CREATE TABLE IF NOT EXISTS files (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 path TEXT NOT NULL UNIQUE,
@@ -571,8 +606,8 @@ impl TimelineStore {
                 heartbeat_ms INTEGER NOT NULL
             );
             ",
-        )
-        .context("failed to initialize sqlite schema")?;
+            )
+            .context("failed to initialize sqlite schema")?;
         Ok(())
     }
 
@@ -616,7 +651,8 @@ impl TimelineStore {
             ",
         )?;
         let like_pattern = format!("{prefix}%");
-        let rows = statement.query_map(params![prefix, like_pattern], |row| row.get::<_, String>(0))?;
+        let rows =
+            statement.query_map(params![prefix, like_pattern], |row| row.get::<_, String>(0))?;
         let mut paths = Vec::new();
         for row in rows {
             paths.push(row?);
@@ -642,7 +678,8 @@ fn upsert_file_tx(tx: &Transaction<'_>, relative_path: &str, recorded_at_ms: i64
     )
     .with_context(|| format!("failed to upsert file row for {relative_path}"))?;
 
-    file_id_by_path_tx(tx, relative_path)?.ok_or_else(|| anyhow!("missing file row for {relative_path}"))
+    file_id_by_path_tx(tx, relative_path)?
+        .ok_or_else(|| anyhow!("missing file row for {relative_path}"))
 }
 
 fn file_id_by_path_tx(tx: &Transaction<'_>, relative_path: &str) -> Result<Option<i64>> {
@@ -655,7 +692,11 @@ fn file_id_by_path_tx(tx: &Transaction<'_>, relative_path: &str) -> Result<Optio
     .with_context(|| format!("failed to resolve file id for {relative_path}"))
 }
 
-fn latest_revision_at_conn(conn: &Connection, file_id: i64, at_ms: i64) -> Result<Option<RevisionRow>> {
+fn latest_revision_at_conn(
+    conn: &Connection,
+    file_id: i64,
+    at_ms: i64,
+) -> Result<Option<RevisionRow>> {
     conn.query_row(
         "
         SELECT id, ordinal, recorded_at_ms, event_type, storage_kind, base_revision_id, content_hash, size_bytes, payload
@@ -795,9 +836,9 @@ fn materialize_chain(mut chain: Vec<RevisionRow>) -> Result<String> {
                     .with_context(|| format!("revision {} contains invalid UTF-8", revision.id))?;
             }
             StorageKind::Patch => {
-                let payload = revision
-                    .payload
-                    .ok_or_else(|| anyhow!("revision {} is missing a patch payload", revision.id))?;
+                let payload = revision.payload.ok_or_else(|| {
+                    anyhow!("revision {} is missing a patch payload", revision.id)
+                })?;
                 current = delta::apply_patch(&current, &payload)?;
             }
             StorageKind::None => bail!("revision {} has no reconstructable content", revision.id),
@@ -826,7 +867,12 @@ fn convert_revision_to_full_tx(tx: &Transaction<'_>, revision_id: i64) -> Result
             payload = ?4
         WHERE id = ?1
         ",
-        params![revision_id, hash, content.len() as i64, content.into_bytes()],
+        params![
+            revision_id,
+            hash,
+            content.len() as i64,
+            content.into_bytes()
+        ],
     )
     .with_context(|| format!("failed to rewrite revision {revision_id} as a full snapshot"))?;
     Ok(())

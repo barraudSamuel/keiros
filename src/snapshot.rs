@@ -3,11 +3,7 @@ use std::{collections::HashSet, path::Path};
 use anyhow::{Context, Result};
 use walkdir::WalkDir;
 
-use crate::{
-    config::normalize_relative_path,
-    filter::ProjectFilter,
-    store::TimelineStore,
-};
+use crate::{config::normalize_relative_path, filter::ProjectFilter, store::TimelineStore};
 
 #[derive(Debug, Default, Clone)]
 pub struct ScanSummary {

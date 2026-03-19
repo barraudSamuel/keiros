@@ -19,7 +19,11 @@ pub fn parse_timestamp(input: &str) -> Result<i64> {
     }
 
     if let Ok(unix) = trimmed.parse::<i64>() {
-        return Ok(if trimmed.len() >= 13 { unix } else { unix * 1_000 });
+        return Ok(if trimmed.len() >= 13 {
+            unix
+        } else {
+            unix * 1_000
+        });
     }
 
     if let Some(duration) = trimmed.strip_suffix(" ago") {

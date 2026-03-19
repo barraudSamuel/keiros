@@ -108,7 +108,10 @@ impl ProjectFilter {
             return true;
         }
 
-        if TEMP_SUFFIXES.iter().any(|suffix| file_name.ends_with(suffix)) {
+        if TEMP_SUFFIXES
+            .iter()
+            .any(|suffix| file_name.ends_with(suffix))
+        {
             return true;
         }
 
