@@ -1,0 +1,78 @@
+use std::{
+    path::PathBuf,
+    process,
+    sync::mpsc,
+    time::{Duration, Instant},
+};
+
+use anyhow::{Context, Result};
+use notify::{Config as NotifyConfig, RecommendedWatcher, RecursiveMode, Watcher};
+
+use crate::{
+    config::{ProjectPaths, TimelineConfig, WATCHER_HEARTBEAT_MS},
+    debounce::Debouncer,
+    filter::ProjectFilter,
+    snapshot::{capture_initial_state, process_path_change},
+    store::TimelineStore,
+    time::now_ms,
+};
+
+pub fn watch(root: PathBuf, config: TimelineConfig) -> Result<()> {
+    let paths = ProjectPaths::initialize(&root)?;
+    let filter = ProjectFilter::new(paths.root.clone(), config.max_file_size_bytes)?;
+    let mut store = TimelineStore::open(&paths, config)?;
+
+    let started_at_ms = now_ms();
+    let pid = process::id() as i64;
+    store.touch_watcher(pid, started_at_ms, started_at_ms, &paths.root)?;
+
+    let scan = capture_initial_state(&paths.root, &filter, &mut store, started_at_ms)?;
+    println!("Watching {}", paths.root.display());
+    println!(
+        "Initial scan captured {} changed files and {} deletions",
+        scan.tracked_files, scan.deleted_files
+    );
+
+    let (sender, receiver) = mpsc::channel();
+    let mut watcher = RecommendedWatcher::new(
+        move |result| {
+            let _ = sender.send(result);
+        },
+        NotifyConfig::default(),
+    )
+    .context("failed to start filesystem watcher")?;
+    watcher
+        .watch(&paths.root, RecursiveMode::Recursive)
+        .with_context(|| format!("failed to watch {}", paths.root.display()))?;
+
+    let mut debouncer = Debouncer::new(Duration::from_millis(config.debounce_ms));
+    let mut last_heartbeat = Instant::now();
+
+    loop {
+        match receiver.recv_timeout(Duration::from_millis(250)) {
+            Ok(Ok(event)) => {
+                let observed_at = Instant::now();
+                for path in event.paths {
+                    debouncer.record(path, observed_at);
+                }
+            }
+            Ok(Err(error)) => {
+                eprintln!("watch error: {error}");
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+        }
+
+        let now = Instant::now();
+        for path in debouncer.drain_ready(now) {
+            process_path_change(&paths.root, &path, &filter, &mut store, now_ms())?;
+        }
+
+        if last_heartbeat.elapsed() >= Duration::from_millis(WATCHER_HEARTBEAT_MS) {
+            store.touch_watcher(pid, started_at_ms, now_ms(), &paths.root)?;
+            last_heartbeat = Instant::now();
+        }
+    }
+
+    Ok(())
+}
