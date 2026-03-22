@@ -6,6 +6,8 @@ It records time-based file history inside a project, independently of Git, so yo
 
 `keiros` is not a Git replacement. It is a local safety net.
 
+It works inside Git repositories, but it stays independent from Git itself. Current releases partition timeline data by the active runtime context, so branch switches and linked worktrees no longer share one logical file stream by default.
+
 ## Why This Exists
 
 Git is excellent for intentional version control. It is less helpful when:
@@ -25,6 +27,7 @@ Git is excellent for intentional version control. It is less helpful when:
 - Tracks create, modify, and delete events
 - Debounces rapid edit bursts to keep only stabilized states
 - Supports restoring a single file or the whole project to an earlier timestamp
+- Scopes history, recent changes, diffs, and restore planning to the active Git or local context
 - Shows file history and diffs between historical versions
 - Uses `.gitignore` when present, plus built-in ignore rules for secrets and common noise
 
@@ -38,6 +41,10 @@ Current scope:
 - Source-code oriented text files
 - One project at a time
 
+Current limitation:
+
+- timelines created before the context-aware schema may be migrated conservatively into full snapshots
+
 ## How It Works
 
 When `keiros watch` is running, it monitors the project directory recursively. For each tracked file, it records revisions into `.timeline/keiros.db`.
@@ -47,6 +54,8 @@ Each revision is stored as one of:
 - a full text snapshot
 - a patch against the previous revision
 - a delete marker
+
+Inside Git repositories, `keiros` stores separate logical streams per runtime context fingerprint. That fingerprint includes the worktree root, shared Git dir, branch name, HEAD, and detached state. Outside Git, `keiros` uses a local context tied to the project root.
 
 This makes it possible to reconstruct file contents at a given timestamp while keeping storage simpler than storing only full copies of everything.
 
@@ -151,7 +160,13 @@ Restore a file to an earlier state:
 keiros restore-file src/main.rs --at "10m ago"
 ```
 
-Restore the whole project:
+Preview a project restore first:
+
+```bash
+keiros restore-project --at "1h ago" --dry-run
+```
+
+Then apply it if the preview looks right:
 
 ```bash
 keiros restore-project --at "1h ago"
@@ -190,7 +205,7 @@ Example:
 keiros diff src/lib.rs --at "2h ago" --at2 "30m ago"
 ```
 
-### `keiros restore-file <file> --at <timestamp>`
+### `keiros restore-file <file> --at <timestamp> [--dry-run] [--allow-cross-context]`
 
 Overwrites a file with the version that existed at the given timestamp.
 
@@ -199,11 +214,14 @@ Examples:
 ```bash
 keiros restore-file src/lib.rs --at "10m ago"
 keiros restore-file src/lib.rs --at "2026-03-19T12:00:00+01:00"
+keiros restore-file src/lib.rs --at "10m ago" --dry-run
 ```
 
 If the file did not exist at that time, `keiros` removes it.
 
-### `keiros restore-project --at <timestamp>`
+In phase 2, file restore reads only from the active runtime context. `--allow-cross-context` is reserved for a later release and currently returns a clear error instead of bypassing context scoping.
+
+### `keiros restore-project --at <timestamp> [--dry-run] [--allow-cross-context]`
 
 Restores all tracked files in the project to their state at the given timestamp.
 
@@ -212,9 +230,14 @@ Examples:
 ```bash
 keiros restore-project --at "30m ago"
 keiros restore-project --at "2026-03-19T09:15:00+01:00"
+keiros restore-project --at "30m ago" --dry-run
 ```
 
 Tracked files that did not exist at that timestamp are removed.
+
+`--dry-run` is the recommended first step before a project restore.
+
+In phase 2, project restore only reads tracked files from the active runtime context. Files that only exist in another branch or worktree context are ignored by default instead of being mixed into the restore plan.
 
 ### `keiros status`
 
@@ -336,7 +359,8 @@ your-project/
 
 The SQLite database stores:
 
-- tracked file paths
+- context rows for local or Git runtime states
+- tracked file paths scoped by context
 - revision timestamps
 - event types
 - patch or full-snapshot payloads
@@ -367,7 +391,9 @@ The SQLite database stores:
 
 - Restore commands overwrite tracked files directly.
 - `keiros` is independent from Git and does not require commits.
-- `keiros` works inside Git repositories, but does not depend on Git metadata except for reading `.gitignore`.
+- `keiros` works inside Git repositories, but it still records and restores through its own local timeline data.
+- `history`, `diff`, `recent`, `restore-file`, and `restore-project` all default to the active runtime context.
+- `keiros restore-project --dry-run` is the safest way to preview a large recovery before touching the filesystem.
 - If SQLite integrity checks fail, the tool is designed to fail fast instead of silently restoring incorrect content.
 
 ## Current Limitations
@@ -377,6 +403,7 @@ The SQLite database stores:
 - Project restore only affects files known to `keiros`; unrelated files are not touched.
 - The watcher is launched manually and is not yet managed as a background service.
 - Patch storage is intentionally simple and not yet aggressively optimized.
+- Intentional cross-context restore is not implemented yet; `--allow-cross-context` is reserved for future work.
 
 ## Development
 
@@ -407,6 +434,8 @@ The current test suite covers:
 - max file size filtering
 - file restore correctness
 - project restore correctness
+- context partitioning across branches and worktrees
+- v1 to v2 schema migration and full-snapshot replay
 - delete handling
 - pruning behavior
 - timestamp lookup correctness

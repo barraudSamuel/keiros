@@ -1,3 +1,26 @@
 /target
 /.timeline
 .DS_Store
+/scripts/validate_git_safety_phase1.sh
+
+# Editor settings
+.idea/
+.vscode/
+*.code-workspace
+
+# Vim / Neovim
+*.swp
+*.swo
+*~
+Session.vim
+
+# JetBrains
+*.iml
+
+# Emacs
+\#*\#
+.\#*
+
+# Sublime / other editors
+*.sublime-project
+*.sublime-workspace

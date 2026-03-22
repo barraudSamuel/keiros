@@ -16,6 +16,7 @@ pub fn capture_initial_state(
     filter: &ProjectFilter,
     store: &mut TimelineStore,
     recorded_at_ms: i64,
+    context_id: i64,
 ) -> Result<ScanSummary> {
     let mut summary = ScanSummary::default();
     let mut seen_paths = HashSet::new();
@@ -40,13 +41,13 @@ pub fn capture_initial_state(
 
         let relative_path = normalize_relative_path(root, entry.path())?;
         seen_paths.insert(relative_path.clone());
-        if store.record_text(&relative_path, &text, recorded_at_ms)? {
+        if store.record_text(&relative_path, &text, recorded_at_ms, context_id)? {
             summary.tracked_files += 1;
         }
     }
 
-    for path in store.list_current_live_paths()? {
-        if !seen_paths.contains(&path) && store.record_delete(&path, recorded_at_ms)? {
+    for path in store.list_current_live_paths(context_id)? {
+        if !seen_paths.contains(&path) && store.record_delete(&path, recorded_at_ms, context_id)? {
             summary.deleted_files += 1;
         }
     }
@@ -60,6 +61,7 @@ pub fn process_path_change(
     filter: &ProjectFilter,
     store: &mut TimelineStore,
     recorded_at_ms: i64,
+    context_id: i64,
 ) -> Result<()> {
     let absolute_path = if path.is_absolute() {
         path.to_path_buf()
@@ -84,17 +86,17 @@ pub fn process_path_change(
 
         if let Some(text) = filter.read_trackable_text(&absolute_path)? {
             let relative_path = normalize_relative_path(root, &absolute_path)?;
-            store.record_text(&relative_path, &text, recorded_at_ms)?;
+            store.record_text(&relative_path, &text, recorded_at_ms, context_id)?;
         }
         return Ok(());
     }
 
     let relative_path = normalize_relative_path(root, &absolute_path)?;
-    if store.record_delete(&relative_path, recorded_at_ms)? {
+    if store.record_delete(&relative_path, recorded_at_ms, context_id)? {
         return Ok(());
     }
 
     let prefix = format!("{relative_path}/");
-    store.record_delete_prefix(&prefix, recorded_at_ms)?;
+    store.record_delete_prefix(&prefix, recorded_at_ms, context_id)?;
     Ok(())
 }

@@ -43,12 +43,24 @@ pub enum Command {
         /// Target timestamp
         #[arg(long)]
         at: String,
+        /// Print the planned restore without changing files
+        #[arg(long)]
+        dry_run: bool,
+        /// Reserved for future cross-context restore support (currently errors in phase 2)
+        #[arg(long)]
+        allow_cross_context: bool,
     },
     /// Restore every tracked source file in the project to a given timestamp
     RestoreProject {
         /// Target timestamp
         #[arg(long)]
         at: String,
+        /// Print the planned restore without changing files
+        #[arg(long)]
+        dry_run: bool,
+        /// Reserved for future cross-context restore support (currently errors in phase 2)
+        #[arg(long)]
+        allow_cross_context: bool,
     },
     /// Show watcher, retention, and storage status
     Status,
