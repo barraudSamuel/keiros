@@ -1,5 +1,5 @@
 [package]
-name = "keiros"
+name = "kairos"
 version = "0.1.0"
 edition = "2021"
 description = "Local time-based source history for a project, independent of Git"

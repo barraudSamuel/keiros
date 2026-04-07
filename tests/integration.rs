@@ -9,7 +9,7 @@ use anyhow::{Context, Result};
 use rusqlite::{params, Connection};
 use tempfile::tempdir;
 
-use keiros::{
+use kairos::{
     config::{ProjectPaths, TimelineConfig, DAY_MS, DEFAULT_MAX_FILE_SIZE_BYTES},
     debounce::Debouncer,
     delta,
@@ -670,6 +670,37 @@ fn worktree_a_and_worktree_b_do_not_share_file_streams() -> Result<()> {
     Ok(())
 }
 
+#[test]
+fn new_projects_use_kairos_database_name() -> Result<()> {
+    let temp = tempdir()?;
+    let canonical_root = fs::canonicalize(temp.path())?;
+
+    let paths = ProjectPaths::initialize(temp.path())?;
+
+    assert_eq!(
+        paths.database_path,
+        canonical_root.join(".timeline/kairos.db")
+    );
+    Ok(())
+}
+
+#[test]
+fn legacy_keiros_database_name_is_still_discovered() -> Result<()> {
+    let temp = tempdir()?;
+    let timeline_dir = temp.path().join(".timeline");
+    fs::create_dir_all(&timeline_dir)?;
+    fs::write(timeline_dir.join("keiros.db"), [])?;
+    let canonical_root = fs::canonicalize(temp.path())?;
+
+    let paths = ProjectPaths::discover(temp.path())?;
+
+    assert_eq!(
+        paths.database_path,
+        canonical_root.join(".timeline/keiros.db")
+    );
+    Ok(())
+}
+
 fn open_store(root: &Path) -> Result<(ProjectPaths, TimelineStore)> {
     let paths = ProjectPaths::initialize(root)?;
     let store = TimelineStore::open(&paths, TimelineConfig::default())?;
@@ -704,8 +735,8 @@ fn git_available() -> bool {
 
 fn init_git_repo(root: &Path) -> Result<()> {
     run_git(root, &["init"])?;
-    run_git(root, &["config", "user.name", "Keiros Test"])?;
-    run_git(root, &["config", "user.email", "keiros@example.com"])?;
+    run_git(root, &["config", "user.name", "Kairos Test"])?;
+    run_git(root, &["config", "user.email", "kairos@example.com"])?;
     write_text(&root.join("README.md"), "seed\n")?;
     run_git(root, &["add", "README.md"])?;
     run_git(root, &["commit", "-m", "initial"])?;

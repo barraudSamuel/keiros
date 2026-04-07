@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in contributing to `keiros`.
+Thanks for your interest in contributing to `kairos`.
 
 ## Project Priorities
 
@@ -11,7 +11,7 @@ Please optimize changes in this order:
 3. Simplicity and maintainability
 4. Performance after correctness
 
-`keiros` is a recovery tool. A simple and correct implementation is better than a clever one that risks incorrect restores.
+`kairos` is a recovery tool. A simple and correct implementation is better than a clever one that risks incorrect restores.
 
 ## Getting Started
 

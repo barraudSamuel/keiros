@@ -4,7 +4,8 @@ use anyhow::{anyhow, bail, Context, Result};
 use walkdir::WalkDir;
 
 pub const TIMELINE_DIR_NAME: &str = ".timeline";
-pub const DATABASE_FILE_NAME: &str = "keiros.db";
+pub const DATABASE_FILE_NAME: &str = "kairos.db";
+pub const LEGACY_DATABASE_FILE_NAME: &str = "keiros.db";
 pub const DEFAULT_RETENTION_DAYS: i64 = 7;
 pub const DEFAULT_DEBOUNCE_MS: u64 = 1_200;
 pub const DEFAULT_MAX_FILE_SIZE_BYTES: u64 = 1_048_576;
@@ -42,7 +43,7 @@ pub struct ProjectPaths {
 impl ProjectPaths {
     pub fn from_root(root: PathBuf) -> Self {
         let timeline_dir = root.join(TIMELINE_DIR_NAME);
-        let database_path = timeline_dir.join(DATABASE_FILE_NAME);
+        let database_path = preferred_database_path(&timeline_dir);
         Self {
             root,
             timeline_dir,
@@ -87,10 +88,24 @@ impl ProjectPaths {
         }
 
         bail!(
-            "could not find a {} directory. Run `keiros watch` from the project root first.",
+            "could not find a {} directory. Run `kairos watch` from the project root first.",
             TIMELINE_DIR_NAME
         );
     }
+}
+
+fn preferred_database_path(timeline_dir: &Path) -> PathBuf {
+    let current = timeline_dir.join(DATABASE_FILE_NAME);
+    if current.exists() {
+        return current;
+    }
+
+    let legacy = timeline_dir.join(LEGACY_DATABASE_FILE_NAME);
+    if legacy.exists() {
+        return legacy;
+    }
+
+    current
 }
 
 pub fn canonicalize_existing_dir(path: &Path) -> Result<PathBuf> {

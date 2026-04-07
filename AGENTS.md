@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-`keiros` is a single-crate Rust CLI. Core code lives in `src/`, with `src/main.rs` as the thin binary entrypoint and `src/lib.rs` wiring commands to focused modules such as `store.rs`, `restore.rs`, `watcher.rs`, `filter.rs`, and `ui.rs`. Integration coverage lives in `tests/integration.rs`. Generated artifacts belong in `target/`. Local timeline data is stored under `.timeline/` when the tool runs; treat that as runtime state, not source.
+`kairos` is a single-crate Rust CLI. Core code lives in `src/`, with `src/main.rs` as the thin binary entrypoint and `src/lib.rs` wiring commands to focused modules such as `store.rs`, `restore.rs`, `watcher.rs`, `filter.rs`, and `ui.rs`. Integration coverage lives in `tests/integration.rs`. Generated artifacts belong in `target/`. Local timeline data is stored under `.timeline/` when the tool runs; treat that as runtime state, not source.
 
 ## Build, Test, and Development Commands
 
@@ -10,7 +10,7 @@
 - `cargo test` runs the full test suite, including `tests/integration.rs`.
 - `cargo fmt --check` verifies formatting; run `cargo fmt` before committing if needed.
 - `cargo run -- watch .` starts the watcher against the current project.
-- `cargo build --release` produces the optimized CLI in `target/release/keiros`.
+- `cargo build --release` produces the optimized CLI in `target/release/kairos`.
 
 Use `cargo run -- --help` or `cargo run -- history src/lib.rs` when validating CLI behavior locally.
 

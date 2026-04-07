@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "keiros",
+    name = "kairos",
     version,
     about = "Local time-based source history for a project, independent of Git"
 )]
